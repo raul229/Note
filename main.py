@@ -3,6 +3,12 @@ from watchdog.observers import Observer       # Permite observar cambios en arch
 from watchdog.events import FileSystemEventHandler  # Clase base para manejar eventos de archivos
 import time, os, re
 
+patron_celular=re.compile(r'\b9\d{8}\b')
+
+def reconoce_celular(text):
+    m = patron_celular.search(text)
+    return f'CELULAR: {m.group(0)}\n' if m else text
+
 # Definimos una clase que manejará los eventos de modificación de archivos
 class MiHandler(FileSystemEventHandler):
     # El constructor recibe el nombre del archivo que queremos observar
@@ -36,12 +42,18 @@ class MiHandler(FileSystemEventHandler):
                     # Leemos todas las líneas en una lista
                     lineas = f.readlines()
                     
+                    print(lineas)
+                    
                 
                     # Procesamos las líneas. Aquí el ejemplo reemplaza "######" por "---FIN---"
-                    nuevas = [re.sub(r'#+', '#' * 20, l) for l in lineas]
+                    nuevas = [re.sub(r'#+', '#' * 20, l).rstrip()+'\n' for l in lineas]
+                    #procesamos los numenos de celular 
+                    nuevas =[reconoce_celular(elemento) for elemento in nuevas]
 
                     # Regresamos el cursor al inicio del archivo
                     f.seek(0)
+                    
+                    print(nuevas)
                     # Escribimos las líneas modificadas
                     f.writelines(nuevas)
                     # Eliminamos el contenido sobrante si las nuevas líneas son más cortas
