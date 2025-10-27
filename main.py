@@ -1,13 +1,43 @@
 # Importamos las librerías necesarias
 from watchdog.observers import Observer       # Permite observar cambios en archivos y carpetas
 from watchdog.events import FileSystemEventHandler  # Clase base para manejar eventos de archivos
-import time, os, re
+import time, os, re, spacy
 
 patron_celular=re.compile(r'\b9\d{8}\b')
 
-def reconoce_celular(text):
-    m = patron_celular.search(text)
-    return f'CELULAR: {m.group(0)}\n' if m else text
+patron_dni=re.compile(r'\b\d{8}\b')
+
+nlp = spacy.load('es_core_news_md', disable=["parser", "ner", "lemmatizer"])
+
+def reconoce_nombre(texto):
+    # texto = texto.strip()
+    doc = nlp(texto.strip())
+    # si spaCy no generó tokens válidos, salimos
+    if len(doc) == 0:
+        return texto.rstrip()+'\n'
+    
+    # Regla 1: todas las palabras son letras (sin números)
+    solo_letras = all(re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+$', token.text) for token in doc)
+
+    # Regla 2: todas las palabras están capitalizadas o en mayúsculas
+    mayusculas = all(token.text.istitle() or token.text.isupper() for token in doc)
+
+    # Regla 3: la mayoría son sustantivos propios o desconocidos
+    proporción_propios = sum(token.pos_ == "PROPN" for token in doc) / len(doc)
+    
+    if solo_letras and mayusculas and proporción_propios >= 0.5:
+        return f'NOMBRE: {texto}'.rstrip()+'\n'
+
+    return texto
+
+def reconoce_dni(texto):
+    m=patron_dni.search(texto)
+    
+    return f'DNI: {m.group(0)}'.rstrip()+'\n' if m else texto
+
+def reconoce_celular(texto):
+    m = patron_celular.search(texto)
+    return f'CELULAR: {m.group(0)}'.rstrip()+'\n' if m else texto
 
 # Definimos una clase que manejará los eventos de modificación de archivos
 class MiHandler(FileSystemEventHandler):
@@ -43,13 +73,17 @@ class MiHandler(FileSystemEventHandler):
                     lineas = f.readlines()
                     
                     print(lineas)
-                    
+                                        
                 
                     # Procesamos las líneas. Aquí el ejemplo reemplaza "######" por "---FIN---"
                     nuevas = [re.sub(r'#+', '#' * 20, l).rstrip()+'\n' for l in lineas]
                     #procesamos los numenos de celular 
-                    nuevas =[reconoce_celular(elemento) for elemento in nuevas]
-
+                    nuevas =[reconoce_celular(celular) for celular in nuevas]
+                    
+                    nuevas=[reconoce_dni(dni) for dni in nuevas]
+                    
+                    nuevas=[reconoce_nombre(nombre) for nombre in nuevas]
+                    
                     # Regresamos el cursor al inicio del archivo
                     f.seek(0)
                     
