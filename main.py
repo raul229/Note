@@ -7,28 +7,34 @@ patron_celular=re.compile(r'\b9\d{8}\b')
 
 patron_dni=re.compile(r'\b\d{8}\b')
 
-nlp = spacy.load('es_core_news_md', disable=["parser", "ner", "lemmatizer"])
 
-def reconoce_nombre(texto):
-    # texto = texto.strip()
-    doc = nlp(texto.strip())
-    # si spaCy no generó tokens válidos, salimos
-    if len(doc) == 0:
-        return texto.rstrip()+'\n'
+#extraemos palabras comunes del diccionario
+with open("palabras.txt", "r", encoding="utf-8") as f:
+    lista = [linea.strip() for linea in f if linea.strip()]
+    f.close()
     
-    # Regla 1: todas las palabras son letras (sin números)
-    solo_letras = all(re.match(r'^[A-Za-zÁÉÍÓÚáéíóúÜüÑñ]+$', token.text) for token in doc)
+palabras_comunes = set(lista)
 
-    # Regla 2: todas las palabras están capitalizadas o en mayúsculas
-    mayusculas = all(token.text.istitle() or token.text.isupper() for token in doc)
 
-    # Regla 3: la mayoría son sustantivos propios o desconocidos
-    proporción_propios = sum(token.pos_ == "PROPN" for token in doc) / len(doc)
+
+def reconoce_nombre(fila: str) -> str:
+    palabras = fila.lower().split()
+    # Casos base
+    if not palabras:
+        return fila
+
+    encabezados = {'nombre:', 'dni:', 'celular:', '####################'}
+    if palabras[0] in encabezados:
+        return fila
+
+    # Si todas las palabras no están en el conjunto común, se asume nombre
+    es_nombre = all(p not in palabras_comunes for p in palabras)
+    if es_nombre:
+        return f"NOMBRE: {' '.join(palabras).upper()}\n".rstrip()
     
-    if solo_letras and mayusculas and proporción_propios >= 0.5:
-        return f'NOMBRE: {texto}'.rstrip()+'\n'
+    return ' '.join(palabras).upper().rstrip()+'\n'
 
-    return texto
+
 
 def reconoce_dni(texto):
     m=patron_dni.search(texto)
@@ -74,15 +80,18 @@ class MiHandler(FileSystemEventHandler):
                     
                     print(lineas)
                                         
-                
                     # Procesamos las líneas. Aquí el ejemplo reemplaza "######" por "---FIN---"
                     nuevas = [re.sub(r'#+', '#' * 20, l).rstrip()+'\n' for l in lineas]
+                    
                     #procesamos los numenos de celular 
                     nuevas =[reconoce_celular(celular) for celular in nuevas]
                     
+                    #procesamos numeros de dni                   
                     nuevas=[reconoce_dni(dni) for dni in nuevas]
-                    
+                    #procesamos nombres
                     nuevas=[reconoce_nombre(nombre) for nombre in nuevas]
+                   
+                    
                     
                     # Regresamos el cursor al inicio del archivo
                     f.seek(0)
