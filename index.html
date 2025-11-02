@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Bloc de notas API</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body class="p-4">
+
+    <div class="container">
+        <h3 class="mb-3">Probar API Bloc de Notas</h3>
+        <textarea id="contenido" class="form-control mb-3" rows="20" placeholder="Escribe algo aquí..."></textarea>
+        <button id="enviar" class="btn btn-primary">Enviar</button>
+
+    </div>
+
+    <script>
+        document.getElementById('enviar').addEventListener('click', async () => {
+            const contenido = document.getElementById('contenido').value;
+            const respuesta = await fetch('http://127.0.0.1:8000/notas/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ contenido })
+            });
+            const data = await respuesta.json();
+            document.getElementById('contenido').value = data.contenido || contenido;
+        });
+    </script>
+
+</body>
+
+</html>
