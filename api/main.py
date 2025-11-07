@@ -1,7 +1,7 @@
 from watchdog.observers import Observer       # Permite observar cambios en archivos y carpetas
 from watchdog.events import FileSystemEventHandler  # Clase base para manejar eventos de archivos
 
-from src.utilidades import *
+from api.src.utilidades import *
 import time, os
 
 # Definimos una clase que manejará los eventos de modificación de archivos
